@@ -11,6 +11,7 @@ public abstract class Shape3D
     public abstract bool IsPointInside(double x, double y, double z);
 }
 
+
 /// <summary>
 /// Клас сфери.
 /// </summary>
