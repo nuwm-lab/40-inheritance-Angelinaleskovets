@@ -1,21 +1,40 @@
 using System;
+using System.Globalization;
 
 /// <summary>
-/// Базовий клас для 3D-фігур.
+/// Базовый абстрактный класс для всех 3D-фигур.
 /// </summary>
 public abstract class Shape3D : IDisposable
 {
+    private bool _disposed;
+
+    /// <summary>
+    /// Проверяет, находится ли точка внутри фигуры.
+    /// </summary>
     public abstract bool IsPointInside(double x, double y, double z);
 
-    public virtual void Dispose()
+    /// <summary>
+    /// Освобождение ресурсов (упрощённый Dispose-паттерн).
+    /// </summary>
+    public void Dispose()
     {
-        // Якщо були б ресурси — тут вони б вивільнялися
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        // Здесь могли бы освобождаться ресурсы при наличии
+        _disposed = true;
     }
 }
 
 /// <summary>
-/// Клас сфери.
-/// </summary>
+/// Класс «Сфера».
+—/summary>
 public class Sphere : Shape3D
 {
     public double Radius { get; }
@@ -25,6 +44,9 @@ public class Sphere : Shape3D
 
     public Sphere(double radius, double x, double y, double z)
     {
+        if (radius < 0)
+            throw new ArgumentException("Радиус не может быть отрицательным.", nameof(radius));
+
         Radius = radius;
         CenterX = x;
         CenterY = y;
@@ -33,17 +55,25 @@ public class Sphere : Shape3D
 
     public override bool IsPointInside(double x, double y, double z)
     {
+        if (double.IsNaN(x) || double.IsNaN(y) || double.IsNaN(z))
+            return false;
+
         double dx = x - CenterX;
         double dy = y - CenterY;
         double dz = z - CenterZ;
+
         double distanceSquared = dx * dx + dy * dy + dz * dz;
-        return distanceSquared <= Radius * Radius;
+
+        // Можно учитывать погрешность double:
+        const double epsilon = 1e-10;
+
+        return distanceSquared <= Radius * Radius + epsilon;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        // Тут могла б бути очистка ресурсів
-        base.Dispose();
+        // Никаких ресурсов нет, но структура метода правильная
+        base.Dispose(disposing);
     }
 }
 
@@ -53,24 +83,36 @@ public static class Program
     {
         using Sphere sphere = new Sphere(5.0, 0.0, 0.0, 0.0);
 
-        Console.WriteLine("Введіть координати точки (x, y, z):");
-        Console.Write("x = ");
-        double x = Convert.ToDouble(Console.ReadLine());
+        Console.WriteLine("Введите координаты точки (x, y, z):");
 
-        Console.Write("y = ");
-        double y = Convert.ToDouble(Console.ReadLine());
+        double x = ReadDouble("x = ");
+        double y = ReadDouble("y = ");
+        double z = ReadDouble("z = ");
 
-        Console.Write("z = ");
-        double z = Convert.ToDouble(Console.ReadLine());
+        bool inside = sphere.IsPointInside(x, y, z);
 
-        if (sphere.IsPointInside(x, y, z))
+        Console.WriteLine(
+            inside
+            ? "Точка находится внутри сферы или на её поверхности."
+            : "Точка находится вне сферы."
+        );
+    }
+
+    /// <summary>
+    /// Безопасное считывание double с проверкой ошибок.
+    /// </summary>
+    private static double ReadDouble(string message)
+    {
+        while (true)
         {
-            Console.WriteLine("Точка знаходиться всередині кулі або на її поверхні.");
-        }
-        else
-        {
-            Console.WriteLine("Точка знаходиться поза кулею.");
+            Console.Write(message);
+
+            string? input = Console.ReadLine();
+
+            if (double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
+                return result;
+
+            Console.WriteLine("Ошибка ввода! Введите число в формате 0.0");
         }
     }
 }
-
